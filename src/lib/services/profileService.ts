@@ -28,8 +28,8 @@ export const profileService = {
         `
         )
         .eq("user_id", userId)
-        .single()
-        .eq("deleted_at", null); // Filter soft-deleted
+        .eq("deleted_at", null) // Filter soft-deleted
+        .single();
 
       if (error) {
         await this._logAudit(supabase, "get_profile", userId, null, null, error.message);
@@ -83,6 +83,7 @@ export const profileService = {
         .from("profiles")
         .update(sanitizedUpdates)
         .eq("user_id", userId)
+        .eq("deleted_at", null)
         .select(
           `
           user_id,
@@ -96,8 +97,7 @@ export const profileService = {
           scheduled_for_deletion_until
         `
         )
-        .single()
-        .eq("deleted_at", null);
+        .single();
 
       if (error) {
         await this._logAudit(supabase, "update_profile", userId, currentProfile, sanitizedUpdates, error.message);

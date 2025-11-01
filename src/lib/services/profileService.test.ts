@@ -1,33 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { profileService } from "./profileService";
-import type { SupabaseClient } from "../../db/supabase.client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ProfileDto } from "../../types";
 import type { UpdateProfileCommand } from "../../types";
 
-const mockSupabase = vi.fn() as unknown as SupabaseClient;
-const mockLogAudit = vi.fn();
+const mockSupabase: SupabaseClient = {
+  from: vi.fn(),
+  auth: {
+    getUser: vi.fn(() => ({ data: { user: { id: "test-user" } }, error: null })),
+  },
+} as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-vi.mock("../../db/supabase.client", () => ({
-  SupabaseClient: vi.fn(() => ({
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn(() => ({ data: null, error: null })),
-        })),
-      })),
-      update: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          select: vi.fn(() => ({
-            single: vi.fn(() => ({ data: null, error: null })),
-          })),
-        })),
-      })),
-    })),
-    auth: {
-      getUser: vi.fn(() => ({ data: { user: { id: "test-user" } }, error: null })),
-    },
-  })),
-}));
+const mockLogAudit = vi.fn();
 
 // Mock the internal _logAudit
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,20 +20,25 @@ vi.spyOn(profileService as any, "_logAudit").mockImplementation(mockLogAudit);
 describe("profileService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSupabase.from.mockReturnValue({
+    // Mock the from() method to return a query builder object
+    (mockSupabase.from as any).mockImplementation((table: string) => ({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
-          single: vi.fn(),
-        }),
-      }),
-      update: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
             single: vi.fn(),
           }),
         }),
       }),
-    });
+      update: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn(),
+            }),
+          }),
+        }),
+      }),
+    }));
   });
 
   describe("getProfile", () => {
@@ -66,32 +55,28 @@ describe("profileService", () => {
         scheduled_for_deletion_until: null,
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (mockSupabase.from("profiles").select as any).mockReturnValue({
-        eq: vi.fn((field: string) => {
-          if (field === "user_id") {
-            return { single: vi.fn().mockResolvedValue({ data: mockProfile, error: null }) };
-          }
-          if (field === "deleted_at") {
-            return { single: vi.fn().mockResolvedValue({ data: mockProfile, error: null }) };
-          }
-          return { single: vi.fn().mockResolvedValue({ data: null, error: null }) };
-        }),
-      });
+      // Mock the query chain to return success
+      const mockSingle = vi.fn().mockResolvedValue({ data: mockProfile, error: null });
+      const mockEqDeletedAt = vi.fn().mockReturnValue({ single: mockSingle });
+      const mockEqUserId = vi.fn().mockReturnValue({ eq: mockEqDeletedAt });
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEqUserId });
+
+      (mockSupabase.from as any).mockReturnValue({ select: mockSelect });
 
       const result = await profileService.getProfile("test-user", mockSupabase);
 
       expect(result).toEqual(mockProfile);
-      expect(mockLogAudit).toHaveBeenCalledWith(mockSupabase, "get_profile", "test-user", null, mockProfile, undefined);
+      expect(mockLogAudit).toHaveBeenCalledWith(mockSupabase, "get_profile", "test-user", null, mockProfile, null);
     });
 
     it("should return null if profile not found", async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (mockSupabase.from("profiles").select as any).mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: null, error: null }),
-        }),
-      });
+      // Mock the query chain to return null data
+      const mockSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+      const mockEqDeletedAt = vi.fn().mockReturnValue({ single: mockSingle });
+      const mockEqUserId = vi.fn().mockReturnValue({ eq: mockEqDeletedAt });
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEqUserId });
+
+      (mockSupabase.from as any).mockReturnValue({ select: mockSelect });
 
       const result = await profileService.getProfile("test-user", mockSupabase);
 
@@ -113,12 +98,13 @@ describe("profileService", () => {
 
     it("should throw error on Supabase error", async () => {
       const error = new Error("DB error");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (mockSupabase.from("profiles").select as any).mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: null, error }),
-        }),
-      });
+      // Mock the query chain to return error
+      const mockSingle = vi.fn().mockResolvedValue({ data: null, error });
+      const mockEqDeletedAt = vi.fn().mockReturnValue({ single: mockSingle });
+      const mockEqUserId = vi.fn().mockReturnValue({ eq: mockEqDeletedAt });
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEqUserId });
+
+      (mockSupabase.from as any).mockReturnValue({ select: mockSelect });
 
       await expect(profileService.getProfile("test-user", mockSupabase)).rejects.toThrow("Failed to fetch profile");
       expect(mockLogAudit).toHaveBeenCalledWith(mockSupabase, "get_profile", "test-user", null, null, "DB error");
@@ -146,14 +132,14 @@ describe("profileService", () => {
       // Mock getProfile to return current
       vi.spyOn(profileService, "getProfile").mockResolvedValueOnce(mockCurrentProfile);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (mockSupabase.from("profiles").update as any).mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: mockUpdatedProfile, error: null }),
-          }),
-        }),
-      });
+      // Mock the update query chain
+      const mockSingle = vi.fn().mockResolvedValue({ data: mockUpdatedProfile, error: null });
+      const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
+      const mockEqDeletedAt = vi.fn().mockReturnValue({ select: mockSelect });
+      const mockEqUserId = vi.fn().mockReturnValue({ eq: mockEqDeletedAt });
+      const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqUserId });
+
+      (mockSupabase.from as any).mockReturnValue({ update: mockUpdate });
 
       const result = await profileService.updateProfile("test-user", updates, mockSupabase);
 
@@ -164,7 +150,7 @@ describe("profileService", () => {
         "test-user",
         mockCurrentProfile,
         mockUpdatedProfile,
-        undefined
+        null
       );
     });
 
@@ -187,21 +173,29 @@ describe("profileService", () => {
 
     it("should throw on update error", async () => {
       const mockCurrentProfile: ProfileDto = {
-        /* ... */
+        user_id: "test-user",
+        email: "test@example.com",
+        display_name: "Test User",
+        locale: "en",
+        timezone: "UTC",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        deleted_at: null,
+        scheduled_for_deletion_until: null,
       };
       const updates: UpdateProfileCommand = { display_name: "New Name" };
 
       vi.spyOn(profileService, "getProfile").mockResolvedValueOnce(mockCurrentProfile);
 
       const error = new Error("Update failed");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (mockSupabase.from("profiles").update as any).mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: null, error }),
-          }),
-        }),
-      });
+      // Mock the update query chain with error
+      const mockSingle = vi.fn().mockResolvedValue({ data: null, error });
+      const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
+      const mockEqDeletedAt = vi.fn().mockReturnValue({ select: mockSelect });
+      const mockEqUserId = vi.fn().mockReturnValue({ eq: mockEqDeletedAt });
+      const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqUserId });
+
+      (mockSupabase.from as any).mockReturnValue({ update: mockUpdate });
 
       await expect(profileService.updateProfile("test-user", updates, mockSupabase)).rejects.toThrow(
         "Failed to update profile"

@@ -4,6 +4,8 @@ import { profileService } from "../../../lib/services/profileService";
 import type { SupabaseClient } from "../../../db/supabase.client";
 import type { ProfileDto } from "../../../types";
 
+vi.mock("../../../lib/services/profileService");
+
 const mockProfile: ProfileDto = {
   user_id: "test-user",
   email: "test@example.com",
@@ -25,6 +27,21 @@ const mockSupabase: SupabaseClient = {
   auth: {
     getUser: vi.fn(),
   },
+  from: vi.fn(() => ({
+    select: vi.fn(() => ({
+      eq: vi.fn(() => ({
+        single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+      })),
+    })),
+    update: vi.fn(() => ({
+      eq: vi.fn(() => ({
+        select: vi.fn(() => ({
+          single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        })),
+      })),
+    })),
+    insert: vi.fn(() => Promise.resolve({ data: null, error: null })),
+  })),
 } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 const mockLocals = {
@@ -37,18 +54,17 @@ const mockRequest = new Request("http://localhost", {
   body: JSON.stringify({ display_name: "Updated User" }),
 });
 
-vi.mock("../../../lib/services/profileService", () => ({
-  profileService: {
-    getProfile: vi.fn(),
-    updateProfile: vi.fn(),
-  },
-}));
+// vi.mock("../../../lib/services/profileService", () => ({
+//   profileService: {
+//     getProfile: vi.fn(),
+//     updateProfile: vi.fn(),
+//   },
+// }));
 
 describe("API Route /api/profiles/me", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (profileService.getProfile as vi.Mock).mockResolvedValue(mockProfile);
-    (profileService.updateProfile as vi.Mock).mockResolvedValue(mockUpdatedProfile);
     mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: "test-user" } }, error: null });
   });
 
@@ -101,6 +117,8 @@ describe("API Route /api/profiles/me", () => {
 
   describe("PATCH handler", () => {
     it("should update profile on success", async () => {
+      (profileService.updateProfile as vi.Mock).mockResolvedValue(mockUpdatedProfile);
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response = await PATCH({ locals: mockLocals, request: mockRequest } as any);
 
@@ -146,8 +164,32 @@ describe("API Route /api/profiles/me", () => {
     it("should return 404 if profile not found after update", async () => {
       (profileService.updateProfile as vi.Mock).mockResolvedValue(null);
 
+      // Create a fresh supabase mock for this test
+      const testSupabase = {
+        auth: {
+          getUser: vi.fn().mockResolvedValue({ data: { user: { id: "test-user" } }, error: null }),
+        },
+        from: vi.fn(() => ({
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+            })),
+          })),
+          update: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              select: vi.fn(() => ({
+                single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+              })),
+            })),
+          })),
+          insert: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        })),
+      } as any;
+
+      const testLocals = { supabase: testSupabase };
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const response = await PATCH({ locals: mockLocals, request: mockRequest } as any);
+      const response = await PATCH({ locals: testLocals, request: mockRequest } as any);
 
       expect(response.status).toBe(404);
       const body = await response.json();
