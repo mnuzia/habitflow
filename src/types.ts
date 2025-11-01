@@ -289,3 +289,47 @@ export interface CreateImportCommand {
   dry_run: boolean;
   tag_map?: Record<string, string>;
 }
+
+// Authentication types and schemas
+import { z } from 'zod';
+import type { Session } from '@supabase/supabase-js';
+
+export interface AuthError {
+  code: string;
+  message: string;
+}
+
+export interface UserProfile {
+  user_id: string;
+  email: string;
+  email_verified: boolean;
+  // Additional fields can be extended from profiles table if needed
+}
+
+export const SignupSchema = z.object({
+  email: z.string().email("Invalid email format"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export const SigninSchema = z.object({
+  email: z.string().email("Invalid email format"),
+  password: z.string().min(1, "Password is required"),
+});
+
+export const ResetPasswordRequestSchema = z.object({
+  email: z.string().email("Invalid email format"),
+});
+
+export const ResetPasswordUpdateSchema = z.object({
+  token: z.string().min(1, "Token is required"),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export type AuthResponse<T = unknown> = {
+  data: T | null;
+  error: AuthError | null;
+};
+
+export type VerifyEmailParams = {
+  token: string;
+};

@@ -1,0 +1,9 @@
+---
+import AuthLayout from '../../layouts/AuthLayout.astro';
+import { LoginForm } from '../../components/auth/LoginForm';
+export const prerender = false;
+---
+
+<AuthLayout title="Login">
+  <LoginForm client:load />
+</AuthLayout>

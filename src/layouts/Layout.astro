@@ -1,11 +1,8 @@
 ---
 import "../styles/global.css";
 
-interface Props {
-  title?: string;
-}
-
-const { title = "10x Astro Starter" } = Astro.props;
+const { locals } = Astro;
+const session = locals.session ?? null;
 ---
 
 <!doctype html>
@@ -15,16 +12,32 @@ const { title = "10x Astro Starter" } = Astro.props;
     <meta name="viewport" content="width=device-width" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="generator" content={Astro.generator} />
-    <title>{title}</title>
+    <title>HabitFlow</title>
   </head>
   <body>
-    <slot />
+    <nav role="navigation" aria-label="Main navigation" class="container mx-auto px-4 py-4 border-b">
+      <div class="flex justify-between items-center">
+        <h1 class="text-2xl font-bold">HabitFlow</h1>
+        <div class="space-x-4">
+          {session ? (
+            <>
+              <span class="text-sm">Welcome, {session.user.email}</span>
+              <a href="/auth/logout" class="text-primary hover:underline" aria-label="Logout">Logout</a>
+            </>
+          ) : (
+            <a href="/auth/login" class="text-primary hover:underline" aria-label="Login">Login</a>
+          )}
+        </div>
+      </div>
+    </nav>
+    <main role="main">
+      <slot />
+    </main>
   </body>
 </html>
 
 <style>
-  html,
-  body {
+  html, body {
     margin: 0;
     width: 100%;
     height: 100%;

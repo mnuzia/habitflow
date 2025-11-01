@@ -1,0 +1,59 @@
+---
+import AuthLayout from '../../layouts/AuthLayout.astro';
+export const prerender = false;
+---
+
+<AuthLayout title="Verify Email">
+  <div className="text-center space-y-4 max-w-md mx-auto">
+    <h1 className="text-2xl font-bold mb-4">Verifying Your Email...</h1>
+    <p id="status" className="text-muted-foreground">Please wait while we verify your email.</p>
+    <div id="error-link" style="display: none;">
+      <a href="/auth/login" className="text-primary underline">Back to Login</a>
+    </div>
+  </div>
+</AuthLayout>
+
+<script>
+  async function verifyEmail() {
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+
+    const statusEl = document.getElementById('status');
+    const errorLinkEl = document.getElementById('error-link');
+
+    if (!accessToken || !refreshToken) {
+      if (statusEl) statusEl.innerText = 'No verification token provided. Please click the link in your email.';
+      if (statusEl) statusEl.className = 'text-destructive';
+      if (errorLinkEl) errorLinkEl.style.display = 'block';
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        if (statusEl) statusEl.innerText = 'Verification failed: ' + (data.error?.message || 'Invalid token. Please try again or request a new email.');
+        if (statusEl) statusEl.className = 'text-destructive';
+        if (errorLinkEl) errorLinkEl.style.display = 'block';
+      } else {
+        if (statusEl) statusEl.innerText = 'Email verified successfully! Redirecting to dashboard...';
+        if (statusEl) statusEl.className = 'text-green-600';
+        setTimeout(() => window.location.href = '/', 2000);
+      }
+    } catch (err) {
+      if (statusEl) statusEl.innerText = 'An error occurred during verification. Please try again.';
+      if (statusEl) statusEl.className = 'text-destructive';
+      if (errorLinkEl) errorLinkEl.style.display = 'block';
+    }
+  }
+
+  verifyEmail();
+</script>

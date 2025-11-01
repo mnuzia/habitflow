@@ -1,8 +1,26 @@
 ---
 import Welcome from "../components/Welcome.astro";
 import Layout from "../layouts/Layout.astro";
+
+// Get session for conditional rendering
+const { locals } = Astro;
+const session = locals.session ?? null;
 ---
 
 <Layout>
-  <Welcome />
+  {session ? (
+    <Welcome />
+  ) : (
+    <div class="container mx-auto px-4 py-8 text-center">
+      <h1 class="text-3xl font-bold mb-4">Welcome to HabitFlow</h1>
+      <p class="mb-6 text-muted-foreground">Track your habits and build better routines.</p>
+      <a 
+        href="/auth/login" 
+        class="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+        aria-label="Login to get started"
+      >
+        Get Started - Login
+      </a>
+    </div>
+  )}
 </Layout>

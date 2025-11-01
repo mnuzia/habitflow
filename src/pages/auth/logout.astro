@@ -1,0 +1,27 @@
+---
+export const prerender = false;
+
+// Server-side logout
+const { locals } = Astro;
+const { error } = await locals.supabase.auth.signOut();
+
+if (error) {
+  console.error('Logout error:', error);
+  // Still redirect despite error
+}
+
+return Astro.redirect('/');
+---
+
+<!-- Minimal template, redirect happens server-side -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Logging out...</title>
+  </head>
+  <body>
+    <p>Logging you out...</p>
+  </body>
+</html>
