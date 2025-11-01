@@ -29,6 +29,7 @@
   - Response Payload: { "user_id": "uuid", "email": "string", "display_name": "string", "timezone": "string", "locale": "string", "created_at": "timestamp", "updated_at": "timestamp", "deleted_at": "timestamp|null", "scheduled_for_deletion_until": "timestamp|null" }
   - Success: 200 OK
   - Errors: 401 Unauthorized, 404 Not Found, 500 Internal Server Error
+  - **Implementation**: Route in `src/pages/api/profiles/me.ts` with Zod validation (none for GET), authentication via Supabase, service call to `profileService.getProfile`. Unit tests in `src/lib/services/profileService.test.ts` cover success, not found, and errors. Audit logging enabled.
 
 - **PATCH /api/profiles/me**
   - Description: Update the current user's profile.
@@ -37,6 +38,7 @@
   - Response Payload: Updated profile object
   - Success: 200 OK
   - Errors: 400 Bad Request (validation failed), 401 Unauthorized, 500 Internal Server Error
+  - **Implementation**: Route in `src/pages/api/profiles/me.ts` with Zod schema for UpdateProfileCommand (validates locale as 'en'/'pl', timezone as IANA), authentication, service call to `profileService.updateProfile` with sanitization. Unit tests cover validation, updates, and errors. Audit logging for old/new values.
 
 ### Habits
 
@@ -366,7 +368,7 @@
 
 ## 3. Authentication and Authorization
 
-- Mechanism: Supabase Auth with JWT tokens for session-based authentication. Personal Access Tokens (PAT) for API read-only access, validated via token_hash comparison. Re-authentication required for sensitive actions (e.g., DSAR, token revocation) using Supabase's re-auth flow. Row-Level Security (RLS) in Supabase enforces data access at the database level. Rate limiting: 30 requests/min per user for mutations, implemented via Supabase Edge Functions. IP/ASN allowlists for PAT. All endpoints require authentication except public ICS feeds (token-based).
+- Mechanism: Supabase Auth with JWT tokens for session-based authentication. Supports standard email/password login with email confirmation. Personal Access Tokens (PAT) for API read-only access, validated via token_hash comparison. Re-authentication required for sensitive actions (e.g., DSAR, token revocation) using Supabase's re-auth flow. Row-Level Security (RLS) in Supabase enforces data access at the database level. Rate limiting: 30 requests/min per user for mutations, implemented via Supabase Edge Functions. IP/ASN allowlists for PAT. All endpoints require authentication except public ICS feeds (token-based).
 
 ## 4. Validation and Business Logic
 

@@ -84,11 +84,13 @@ Użytkownicy chcą śledzić nawyki w prosty i niezawodny sposób na wielu urzą
 
 ## 5. Historyjki użytkowników
 US-001
-Tytuł: Rejestracja i logowanie bez hasła
-Opis: Jako użytkownik chcę logować się magic linkiem lub przez GitHub OAuth, aby szybko uzyskać dostęp bez zapamiętywania haseł.
+Tytuł: Rejestracja i logowanie z hasłem
+Opis: Jako użytkownik chcę rejestrować się podając email, potwierdzać go i ustawiać hasło, oraz logować się za pomocą email/hasło, aby uzyskać dostęp do aplikacji.
 Kryteria akceptacji:
-- Można wysłać magic link ważny ≤15 min z rate-limitami i CAPTCHA.
-- Po kliknięciu linku następuje logowanie i utworzenie profilu.
+- Rejestracja: Użytkownik podaje email, otrzymuje email weryfikacyjny ważny ≤15 min z rate-limitami i CAPTCHA; po potwierdzeniu ustawia hasło.
+- Logowanie: Standardowe z email/hasło, z walidacją siły hasła i rate-limitami.
+- Po udanym logowaniu następuje utworzenie profilu (jeśli nowy użytkownik).
+- Reset hasła: Użytkownik podaje email, otrzymuje email resetujący ważny ≤15 min z rate-limitami; po potwierdzeniu ustawia nowe hasło z walidacją siły.
 - Wymagane re-auth dla krytycznych akcji (delete account, DSAR, rotacja ICS/PAT).
 - Sesje odświeżane w tle, wyloguj wszędzie unieważnia refresh tokens.
 
